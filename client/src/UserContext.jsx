@@ -19,7 +19,7 @@ export function UserContextProvider({ children }) {
                     setReady(true); // Ensure 'ready' is set to true even if there's an error to stop loading
                 });
         }
-    }, []);
+    }, [user]); // This effect depends on the 'user' state to avoid unnecessary requests
 
     return (
         <UserContext.Provider value={{ user, ready, setUser }}>

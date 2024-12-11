@@ -6,7 +6,7 @@ import PlacesPage from "./PlacePage";
 
 export default function AccountPage() {
     const { ready, user, setUser } = useContext(UserContext);
-    let { subpage } = useParams();
+    let { subpage } = useParams();  // `subpage` should be defined after `useParams()` is called
     const [redirect, setRedirect] = useState(null);
 
     // Default subpage to 'profile' if not provided
