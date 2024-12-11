@@ -1,21 +1,32 @@
 import { Link, Navigate } from "react-router-dom";
 import { useState } from "react";
 import axios from "axios";
+import { useContext } from "react";
+import { UserContext } from "../UserContext";
 
 export default function LoginPage() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const {setUser}= useContext(UserContext);
     const [redirect, setRedirect] = useState(false);
-    async function handleLoginSubmit(e) {
-        e.preventDefault();
-        try {
-            await axios.post('/login', { email, password });
-            alert("Login Successful");
-            setRedirect(true);  // Trigger redirect after successful login
-        } catch (e) {
-            alert("Login failed. Please check your credentials.");
-        }
+    const [loading, setLoading] = useState(false);
+
+async function handleLoginSubmit(e) {
+    e.preventDefault();
+    setLoading(true);
+    try {
+        const { data } = await axios.post('/login', { email, password });
+        setUser(data);
+        alert("Login Successful");
+        setRedirect(true);
+    } catch (e) {
+        alert("Login failed. Please check your credentials.");
+    } finally {
+        setLoading(false);
     }
+}
+
+
 
     if (redirect) {
         return <Navigate to={'/'} />;  // Redirect to home page after login
