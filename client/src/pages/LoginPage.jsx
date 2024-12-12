@@ -7,26 +7,24 @@ import { UserContext } from "../UserContext";
 export default function LoginPage() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const {setUser}= useContext(UserContext);
+    const { setUser } = useContext(UserContext);
     const [redirect, setRedirect] = useState(false);
     const [loading, setLoading] = useState(false);
 
-async function handleLoginSubmit(e) {
-    e.preventDefault();
-    setLoading(true);
-    try {
-        const { data } = await axios.post('/login', { email, password });
-        setUser(data);
-        alert("Login Successful");
-        setRedirect(true);
-    } catch (e) {
-        alert("Login failed. Please check your credentials.");
-    } finally {
-        setLoading(false);
+    async function handleLoginSubmit(e) {
+        e.preventDefault();
+        setLoading(true);
+        try {
+            const { data } = await axios.post('/login', { email, password });
+            setUser(data);
+            alert("Login Successful");
+            setRedirect(true);
+        } catch (e) {
+            alert("Login failed. Please check your credentials.");
+        } finally {
+            setLoading(false);
+        }
     }
-}
-
-
 
     if (redirect) {
         return <Navigate to={'/'} />;  // Redirect to home page after login

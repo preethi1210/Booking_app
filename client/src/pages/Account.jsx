@@ -1,31 +1,48 @@
 import { Link, Navigate, useParams } from "react-router-dom";
-import { useContext } from "react";
+import { useContext, useState } from "react";
 import axios from "axios";
 import { UserContext } from "../UserContext";
+import PlacesPage from "./PlacePage";
 
 export default function AccountPage() {
-    const { ready, user } = useContext(UserContext);
-    const { subpage } = useParams(); // `subpage` should be defined after `useParams()` is called
-    
+    const { ready, user, setUser } = useContext(UserContext);
+    let { subpage } = useParams();
+    const [redirect, setRedirect] = useState(null);
+
+    // Default subpage to 'profile' if not provided
+    let currentSubpage = subpage || 'profile';
+
+    // Show loading message if data isn't ready
     if (!ready) {
-        return "Loading";  // Show loading state until the data is ready
+        return "Loading...";
     }
-    
+
+    // Redirect to login if the user isn't logged in
     if (ready && !user) {
-        return <Navigate to={'/login'} />;  // Redirect to login if no user
+        return <Navigate to="/login" />;
     }
 
-    function logout() {
-        axios.post('/logout').then(() => {
-            // You might want to redirect or update state after logout
-            window.location.reload(); // A simple way to reload and reset the app state
-        });
+    // Logout function
+    async function logout() {
+        try {
+            await axios.post('/logout');
+            setUser(null); // Clear user context
+            setRedirect('/'); // Set redirect to homepage after logout
+        } catch (error) {
+            console.error("Error logging out:", error);
+        }
     }
 
-    function linkClasses(type = null) {
-        let classes = 'p-2 px-6';
-        if (type === subpage || (subpage === undefined && type === 'profile')) {
-            classes += ' bg-primary rounded-full';
+    // Redirect if a target is set
+    if (redirect) {
+        return <Navigate to={redirect} />;
+    }
+
+    // Helper function to handle link classes
+    function linkClasses(type) {
+        let classes = 'p-2 px-6 ';
+        if (type === currentSubpage) {
+            classes += ' bg-primary rounded-full text-white';
         }
         return classes;
     }
@@ -33,19 +50,18 @@ export default function AccountPage() {
     return (
         <div>
             <nav className="w-full flex justify-center mt-8 gap-4">
-                <Link className={linkClasses('profile')} to={'/accounts/profile'}>My profile</Link>
-                <Link className={linkClasses('bookings')} to={'/accounts/bookings'}>My bookings</Link>
-                <Link className={linkClasses('places')} to={'/accounts/places'}>My accommodation</Link>
+                <Link className={linkClasses('profile')} to="/account/profile">My profile</Link>
+                <Link className={linkClasses('bookings')} to="/account/bookings">My bookings</Link>
+                <Link className={linkClasses('places')} to="/account/places">My accommodation</Link>
             </nav>
 
-            {subpage === 'profile' && (
+            {currentSubpage === 'profile' && (
                 <div className="text-center max-w-lg mx-auto">
-                    Logged in as {user.name} ({user.email})<br />
+                    <p>Logged in as {user.name} ({user.email})</p>
                     <button className="primary max-w-sm mt-2" onClick={logout}>Logout</button>
                 </div>
             )}
-
-            {/* Add other subpage content here based on the 'subpage' value */}
+            {currentSubpage === 'places' && <PlacesPage />}
         </div>
     );
 }
