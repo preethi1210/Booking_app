@@ -11,7 +11,7 @@ require('dotenv').config();
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
-
+const Place=require('./models/Place')
 const jwtSecret = "berrituh439uhgfwe98wy3greh2"; 
 
 app.use(express.json());
@@ -148,11 +148,28 @@ app.post('/upload', photoMiddleware.array('photos', 100), (req, res) => {
     const newName = 'photo' + Date.now() + '.jpg'; // Create new filename
     const newPath = path.join(__dirname, 'uploads', newName); // New path for file
     fs.renameSync(filePath, newPath); // Rename the file
-    uploadedFiles.push(newName); // Only push the new file name
+
+    uploadedFiles.push({
+      filename: newName,
+      url: `http://localhost:4000/uploads/${newName}`, // Include the URL
+    });
   }
-  res.json(uploadedFiles); // Return the updated file names
+  res.json(uploadedFiles); // Return the updated file objects
 });
 
+app.post('/places',(req,res)=>{
+  const {token}=req.cookies;
+  const {title,address,addedPhotos,description,perks,extraInfo,checkIn,checkOut,maxGuests,}=req.body;
+  jwt.verify(token, jwtSecret, {}, async (err, userData) => {
+    if (err) {
+      throw err; 
+    }
+    const placeDoc=await Place.create({
+      owner:userData.id,
+      title,address,addedPhotos,description,perks,extraInfo,checkIn,checkOut,maxGuests,
+ })
+})
+})
 app.listen(4000, () => {
   console.log('Server running on port 4000');
 });

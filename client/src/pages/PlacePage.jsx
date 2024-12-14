@@ -1,20 +1,21 @@
 import axios from "axios";
-import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useParams, Navigate } from "react-router-dom";
 import Perks from "../Perks";
+import PhotosUploader from "../PhotosUpload";
 
 export default function PlacesPage() {
   const { action } = useParams();
   const [title, setTitle] = useState('');
   const [address, setAddress] = useState('');
-  const [addedPhotos, setAddedPhotos] = useState([]);
-  const [photoLink, setPhotoLink] = useState('');
+  const [redirect, setRedirect] = useState(''); 
   const [description, setDescription] = useState('');
   const [perks, setPerks] = useState([]);
   const [extraInfo, setExtraInfo] = useState('');
   const [checkIn, setCheckIn] = useState('');
   const [checkOut, setCheckOut] = useState('');
   const [maxGuests, setMaxGuests] = useState(1);
+  const [addedPhotos, setAddedPhotos] = useState([]);
 
   function inputHeader(text) {
     return <h2 className="text-2xl mt-4">{text}</h2>;
@@ -23,42 +24,7 @@ export default function PlacesPage() {
   function inputDescription(text) {
     return <p className="text-gray-500 text-sm">{text}</p>;
   }
-  const [isUploading, setIsUploading] = useState(false);
 
-  function uploadPhoto(e) {
-    e.preventDefault();
-    setIsUploading(true); // Start uploading
-    const files = e.target.files;
-    const data = new FormData();
-  
-    // Append files to FormData
-    for (let i = 0; i < files.length; i++) {
-      data.append('photos', files[i]);
-    }
-  
-    // Post request to upload the files
-    axios
-      .post('/upload', data, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      })
-      .then((response) => {
-        const filenames = response.data; // This should be an array of filenames
-        // Assuming filenames are just the filenames without paths
-        const imageLinks = filenames.map((filename) => ({
-          filename,
-          url: `http://localhost:4000/uploads/${filename}`, // Construct image URL
-        }));
-        setAddedPhotos((prev) => [...prev, ...imageLinks]); // Add image objects to state
-        setIsUploading(false); // Stop uploading
-      })
-      .catch((err) => {
-        console.error('Error uploading files:', err);
-        setIsUploading(false); // Stop uploading on error
-      });
-  }
-  
-  
-  
   function preInput(header, description) {
     return (
       <>
@@ -68,17 +34,36 @@ export default function PlacesPage() {
     );
   }
 
-  const addPhotoByLink = async (e) => {
-    e.preventDefault(); // Prevent form submission on button click, but not on form submit
-    try {
-      const { data: filename } = await axios.post('/upload-by-link', { link: photoLink });
-      setAddedPhotos((prev) => [...prev, filename]);
-      setPhotoLink(''); // Reset input after upload
-    } catch (error) {
-      console.error('Failed to upload photo:', error);
+  useEffect(() => {
+    if (redirect) {
+      // This will redirect once after the state change
+      return <Navigate to={redirect} />;
     }
-  };
-  
+  }, [redirect]);
+
+  async function addNewPlace(e) {
+    e.preventDefault();
+    if (!title || !address) {
+      alert('Title and Address are required!');
+      return;
+    }
+    try {
+      const { data } = await axios.post('/places', {
+        title,
+        address,
+        addedPhotos,
+        description,
+        perks,
+        extraInfo,
+        checkIn,
+        checkOut,
+        maxGuests
+      });
+      setRedirect('/accounts/places'); 
+    } catch (error) {
+      console.error("Error adding place:", error);
+    }
+  }
 
   return (
     <div>
@@ -108,7 +93,7 @@ export default function PlacesPage() {
         </div>
       )}
       {action === "new" && (
-        <form>
+        <form onSubmit={addNewPlace}>
           {preInput('Title', 'Title (short & crisp)')}
           <input
             type="text"
@@ -124,51 +109,8 @@ export default function PlacesPage() {
             placeholder="Address"
           />
           {preInput('Photos', 'more = better')}
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={photoLink}
-              onChange={(e) => setPhotoLink(e.target.value)}
-              placeholder="Add using a link... jpg"
-            />
-            <button
-              type="button" // Prevent form submission on button click
-              onClick={addPhotoByLink}
-              className="bg-gray-200 px-4 rounded-2xl"
-            >
-              Add photo
-            </button>
-          </div>
+          <PhotosUploader addedPhotos={addedPhotos} onChange={setAddedPhotos} />
 
-          <div className="mt-2 grid gap-2 grid-cols-3 md:grid-cols-4 lg:grid-cols-6 ">
-  {addedPhotos.length > 0 && addedPhotos.map((link) => (
-    <div className="h-32 flex">
-    <img className="rounded-2xl w-full object-cover position-center"
-      key={link}  // Ensure each image has a unique key
-      src={`http://localhost:4000/uploads/${link.filename}`}
-      alt={`Photo`} 
-    /></div>
-  ))}
-</div>
-
-          <label  className="h-32 cursor-pointer flex gap-1 items-center justify-center border bg-transparent rounded-2xl p-8">
-            <input type="file" onChange={uploadPhoto} className="hidden" />
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={1.5}
-              stroke="currentColor"
-              className="size-6"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M12 16.5V9.75m0 0 3 3m-3-3-3 3M6.75 19.5a4.5 4.5 0 0 1-1.41-8.775 5.25 5.25 0 0 1 10.233-2.33 3 3 0 0 1 3.758 3.848A3.752 3.752 0 0 1 18 19.5H6.75Z"
-              />
-            </svg>
-            Upload
-          </label>
           {preInput('Description', 'Description of the place')}
           <textarea
             value={description}
@@ -211,7 +153,7 @@ export default function PlacesPage() {
               <input
                 type="number"
                 value={maxGuests}
-                onChange={(e) => setMaxGuests(e.target.value)}
+                onChange={(e) => setMaxGuests(Number(e.target.value))}
               />
             </div>
           </div>
