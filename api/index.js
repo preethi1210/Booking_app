@@ -11,14 +11,15 @@ require('dotenv').config();
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
-const Place=require('./models/Place')
+const Place = require('./models/Place');
 const jwtSecret = "berrituh439uhgfwe98wy3greh2"; 
 
 app.use(express.json());
-
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
 app.use(cookieParser());
+
+// Serve uploaded images from the 'uploads' directory
+app.use('/uploads', express.static(__dirname+ '/uploads'));
+
 app.use(
   cors({
     credentials: true,
@@ -28,10 +29,12 @@ app.use(
 
 mongoose.connect(process.env.MONGO_URL);
 
+// Test route to check if the server is working
 app.get('/test', (req, res) => {
   res.json('test ok');
 });
 
+// Register route
 app.post('/register', async (req, res) => {
   const { name, email, password } = req.body;
   try {
@@ -43,6 +46,7 @@ app.post('/register', async (req, res) => {
   }
 });
 
+// Login route
 app.post('/login', async (req, res) => {
   const { email, password } = req.body;
   try {
@@ -74,6 +78,7 @@ app.post('/login', async (req, res) => {
   }
 });
 
+// Profile route
 app.get('/profile', (req, res) => {
   const { token } = req.cookies;
 
@@ -105,71 +110,113 @@ app.get('/profile', (req, res) => {
   }
 });
 
+// Logout route
 app.post('/logout', (req, res) => {
   res.cookie('token', '').json(true);
 });
 
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Image upload route using multer
+// Route to upload an image by URL
 
 app.post('/upload-by-link', async (req, res) => {
   const { link } = req.body;
-
-  if (!link) {
-    return res.status(400).json({ error: 'No link provided' });
-  }
-
   const newName = 'photo' + Date.now() + '.jpg';
-  const destinationPath = path.join(__dirname, 'uploads', newName);
-  console.log('Saving image to:', destinationPath);  // Log the full path
-
+  
   try {
-    // Download the image
     await imageDownloader.image({
       url: link,
-      dest: destinationPath,
+      dest: __dirname + '/uploads/' + newName,
     });
 
-    // Respond with the filename so the client can use it
-    res.json({ filename: newName });
+    // Create the URL for the uploaded file
+    const fileUrl = '/uploads/' + newName;
+
+    // Save the file URL in your database (for example, in Place model)
+    const place = await Place.create({
+      owner: req.userData.id, // assuming JWT authentication to get user data
+      addedPhotos: [fileUrl],  // save the image URL
+    });
+
+    res.json({ place, fileUrl }); // Send response with saved place and image URL
   } catch (error) {
-    console.error('Error downloading image:', error);
-    res.status(500).json({ error: 'Failed to download image' });
+    console.error("Error uploading image:", error);
+    res.status(500).json({ error: 'Failed to upload image' });
   }
 });
 
-const photoMiddleware = multer({ dest: 'uploads/' });
+const photosMiddleware = multer({ dest: 'uploads/' });
 
-app.post('/upload', photoMiddleware.array('photos', 100), (req, res) => {
+app.post('/upload', photosMiddleware.array('photos', 100), async (req, res) => {
   const uploadedFiles = [];
-  for (let i = 0; i < req.files.length; i++) {
-    const { path: filePath, originalname } = req.files[i];
-    const parts = originalname.split('.');
-    const ext = parts[parts.length - 1]; 
-    const newName = 'photo' + Date.now() + '.jpg'; // Create new filename
-    const newPath = path.join(__dirname, 'uploads', newName); // New path for file
-    fs.renameSync(filePath, newPath); // Rename the file
 
-    uploadedFiles.push({
-      filename: newName,
-      url: `http://localhost:4000/uploads/${newName}`, // Include the URL
-    });
+  for (let i = 0; i < req.files.length; i++) {
+    const { path, originalname } = req.files[i];
+    const parts = originalname.split('.');
+    const ext = parts[parts.length - 1];
+    const newPath = path + '.' + ext;
+    fs.renameSync(path, newPath);
+
+    // Create the URL for the uploaded file
+    const fileUrl = newPath.replace('uploads/', '');
+
+    // Push the URL into the array
+    uploadedFiles.push(fileUrl);
   }
-  res.json(uploadedFiles); // Return the updated file objects
+
+  // Save image URLs in your database (e.g., Place model)
+  try {
+    // You can use your existing model (Place, or any other model) to save the images
+    const place = await Place.create({
+      owner: req.userData.id, // assuming the user data is decoded from JWT
+      images: uploadedFiles,   // save the file URLs here
+    });
+
+    res.json({ place, uploadedFiles }); // Send the saved place and file URLs back to the client
+  } catch (error) {
+    console.error("Error saving place:", error);
+    res.status(500).json({ error: 'Failed to save images in database' });
+  }
 });
 
-app.post('/places',(req,res)=>{
-  const {token}=req.cookies;
-  const {title,address,addedPhotos,description,perks,extraInfo,checkIn,checkOut,maxGuests,}=req.body;
+// Places route to create a new place
+app.post('/places', (req, res) => {
+  const { token } = req.cookies;
+  const { title, address, addedPhotos, description, perks, extraInfo, checkIn, checkOut, maxGuests } = req.body;
+
+  if (!token) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
   jwt.verify(token, jwtSecret, {}, async (err, userData) => {
     if (err) {
-      throw err; 
+      return res.status(403).json({ error: 'Invalid token' });
     }
-    const placeDoc=await Place.create({
-      owner:userData.id,
-      title,address,addedPhotos,description,perks,extraInfo,checkIn,checkOut,maxGuests,
- })
-})
-})
+
+    try {
+      // Create a new place entry
+      const placeDoc = await Place.create({
+        owner: userData.id,
+        title,
+        address,
+        addedPhotos,
+        description,
+        perks,
+        extraInfo,
+        checkIn,
+        checkOut,
+        maxGuests,
+      });
+
+      // Respond with the created place data
+      res.json(placeDoc);
+    } catch (error) {
+      console.error("Error saving place:", error);
+      res.status(500).json({ error: 'Failed to save place' });
+    }
+  });
+});
+
+// Start the server
 app.listen(4000, () => {
   console.log('Server running on port 4000');
 });

@@ -1,28 +1,59 @@
-import axios from "axios";
-import { useState, useEffect } from "react";
-import { Link, useParams, Navigate } from "react-router-dom";
 import Perks from "../Perks";
+import { useEffect, useState } from "react";
+import axios from "axios";
+import { Navigate, useParams } from "react-router-dom";
 import PhotosUploader from "../PhotosUpload";
 
-export default function PlacesPage() {
-  const { action } = useParams();
+export default function PlacesFormPage() {
+  const { id } = useParams();
   const [title, setTitle] = useState('');
   const [address, setAddress] = useState('');
-  const [redirect, setRedirect] = useState(''); 
+  const [addedPhotos, setAddedPhotos] = useState([]);
   const [description, setDescription] = useState('');
   const [perks, setPerks] = useState([]);
   const [extraInfo, setExtraInfo] = useState('');
   const [checkIn, setCheckIn] = useState('');
   const [checkOut, setCheckOut] = useState('');
   const [maxGuests, setMaxGuests] = useState(1);
-  const [addedPhotos, setAddedPhotos] = useState([]);
+  const [price, setPrice] = useState(100);
+  const [redirect, setRedirect] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!id) return;
+    setLoading(true);
+    axios.get(`/places/${id}`)
+      .then(response => {
+        const { data } = response;
+        setTitle(data.title);
+        setAddress(data.address);
+        setAddedPhotos(data.photos);
+        setDescription(data.description);
+        setPerks(data.perks);
+        setExtraInfo(data.extraInfo);
+        setCheckIn(data.checkIn);
+        setCheckOut(data.checkOut);
+        setMaxGuests(data.maxGuests);
+        setPrice(data.price);
+        setLoading(false);
+      })
+      .catch(err => {
+        setError('Failed to fetch place details.');
+        setLoading(false);
+      });
+  }, [id]);
 
   function inputHeader(text) {
-    return <h2 className="text-2xl mt-4">{text}</h2>;
+    return (
+      <h2 className="text-2xl mt-4">{text}</h2>
+    );
   }
 
   function inputDescription(text) {
-    return <p className="text-gray-500 text-sm">{text}</p>;
+    return (
+      <p className="text-gray-500 text-sm">{text}</p>
+    );
   }
 
   function preInput(header, description) {
@@ -34,134 +65,126 @@ export default function PlacesPage() {
     );
   }
 
-  useEffect(() => {
-    if (redirect) {
-      // This will redirect once after the state change
-      return <Navigate to={redirect} />;
-    }
-  }, [redirect]);
+  async function savePlace(ev) {
+    ev.preventDefault();
+    const placeData = {
+      title,
+      address,
+      addedPhotos,
+      description,
+      perks,
+      extraInfo,
+      checkIn,
+      checkOut,
+      maxGuests,
+      price,
+    };
 
-  async function addNewPlace(e) {
-    e.preventDefault();
-    if (!title || !address) {
-      alert('Title and Address are required!');
-      return;
-    }
+    setLoading(true);
+    setError('');
+
     try {
-      const { data } = await axios.post('/places', {
-        title,
-        address,
-        addedPhotos,
-        description,
-        perks,
-        extraInfo,
-        checkIn,
-        checkOut,
-        maxGuests
-      });
-      setRedirect('/accounts/places'); 
-    } catch (error) {
-      console.error("Error adding place:", error);
+      if (id) {
+        // Update existing place
+        await axios.put('/places', { id, ...placeData });
+      } else {
+        // New place
+        await axios.post('/places', placeData);
+      }
+      setRedirect(true);
+    } catch (err) {
+      setError('Failed to save the place.');
+    } finally {
+      setLoading(false);
     }
+  }
+
+  if (redirect) {
+    return <Navigate to={'/account/places'} />;
   }
 
   return (
     <div>
-      {action !== "new" && (
-        <div className="text-center mt-4">
-          <Link
-            className="inline-flex gap-1 bg-primary text-white py-2 px-6 rounded-full"
-            to="/accounts/places/new"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth="1.5"
-              stroke="currentColor"
-              className="size-6"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M12 4.5v15m7.5-7.5h-15"
-              />
-            </svg>
-            Add new place
-          </Link>
-          <div>My places</div>
+      <form onSubmit={savePlace}>
+        {preInput('Title', 'Title for your place. Should be short and catchy as in advertisement')}
+        <input
+          type="text"
+          value={title}
+          onChange={ev => setTitle(ev.target.value)}
+          placeholder="Title, for example: My lovely apt"
+          required
+        />
+        {preInput('Address', 'Address to this place')}
+        <input
+          type="text"
+          value={address}
+          onChange={ev => setAddress(ev.target.value)}
+          placeholder="Address"
+          required
+        />
+        {preInput('Photos', 'More = better')}
+        <PhotosUploader addedPhotos={addedPhotos} onChange={setAddedPhotos} />
+        {preInput('Description', 'Description of the place')}
+        <textarea
+          value={description}
+          onChange={ev => setDescription(ev.target.value)}
+          required
+        />
+        {preInput('Perks', 'Select all the perks of your place')}
+        <div className="grid mt-2 gap-2 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+          <Perks selected={perks} onChange={setPerks} />
         </div>
-      )}
-      {action === "new" && (
-        <form onSubmit={addNewPlace}>
-          {preInput('Title', 'Title (short & crisp)')}
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Title, for example: My lovely apt"
-          />
-          {preInput('Address', 'Address for your place')}
-          <input
-            type="text"
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
-            placeholder="Address"
-          />
-          {preInput('Photos', 'more = better')}
-          <PhotosUploader addedPhotos={addedPhotos} onChange={setAddedPhotos} />
-
-          {preInput('Description', 'Description of the place')}
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-          {preInput('Perks', 'Select all the perks')}
-          <div className="mt-2 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6">
-            <Perks selected={perks} onChange={setPerks} />
-          </div>
-          {preInput('Extra information', 'House rules, etc')}
-          <textarea
-            value={extraInfo}
-            onChange={(e) => setExtraInfo(e.target.value)}
-          />
-          {preInput(
-            'Check in & out times, max guests',
-            'Add check-in and out times, remember to have some time window for cleaning between guests'
-          )}
-          <div className="grid gap-2 sm:grid-cols-3">
-            <div>
-              <h3 className="mt-2 mb-1">Check in time</h3>
-              <input
-                type="text"
-                value={checkIn}
-                onChange={(e) => setCheckIn(e.target.value)}
-                placeholder="14"
-              />
-            </div>
-            <div>
-              <h3 className="mt-2 mb-1">Check out time</h3>
-              <input
-                type="text"
-                value={checkOut}
-                onChange={(e) => setCheckOut(e.target.value)}
-                placeholder="11"
-              />
-            </div>
-            <div>
-              <h3 className="mt-2 mb-1">Max number of guests</h3>
-              <input
-                type="number"
-                value={maxGuests}
-                onChange={(e) => setMaxGuests(Number(e.target.value))}
-              />
-            </div>
+        {preInput('Extra Info', 'House rules, etc')}
+        <textarea
+          value={extraInfo}
+          onChange={ev => setExtraInfo(ev.target.value)}
+        />
+        {preInput('Check-in & Check-out Times', 'Add check-in and check-out times')}
+        <div className="grid gap-2 grid-cols-2 md:grid-cols-4">
+          <div>
+            <h3 className="mt-2 -mb-1">Check-in time</h3>
+            <input
+              type="text"
+              value={checkIn}
+              onChange={ev => setCheckIn(ev.target.value)}
+              placeholder="14:00"
+            />
           </div>
           <div>
-            <button className="primary my-4">Save</button>
+            <h3 className="mt-2 -mb-1">Check-out time</h3>
+            <input
+              type="text"
+              value={checkOut}
+              onChange={ev => setCheckOut(ev.target.value)}
+              placeholder="11:00"
+            />
           </div>
-        </form>
-      )}
+          <div>
+            <h3 className="mt-2 -mb-1">Max number of guests</h3>
+            <input
+              type="number"
+              value={maxGuests}
+              onChange={ev => setMaxGuests(ev.target.value)}
+              min="1"
+              required
+            />
+          </div>
+          <div>
+            <h3 className="mt-2 -mb-1">Price per night</h3>
+            <input
+              type="number"
+              value={price}
+              onChange={ev => setPrice(ev.target.value)}
+              min="1"
+              required
+            />
+          </div>
+        </div>
+        <button className="primary my-4" disabled={loading}>
+          {loading ? 'Saving...' : 'Save'}
+        </button>
+        {error && <p className="text-red-500">{error}</p>}
+      </form>
     </div>
   );
 }
