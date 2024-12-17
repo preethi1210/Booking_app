@@ -143,7 +143,7 @@ app.post('/upload', photoMiddleware.array('photos', 100), (req, res) => {
 // Create a new place
 app.post('/places', (req, res) => {
   const { token } = req.cookies;
-  const { title, address, addedPhotos, description, perks, extraInfo, checkIn, checkOut, maxGuests } = req.body;
+  const { title, address, addedPhotos, description, perks, extraInfo, checkIn, checkOut, maxGuests,price } = req.body;
 
   if (!token) return res.status(401).json({ error: 'Unauthorized' });
 
@@ -159,7 +159,7 @@ app.post('/places', (req, res) => {
         extraInfo,
         checkIn,
         checkOut,
-        maxGuests,
+        maxGuests,price,
       });
       res.json(placeDoc);
     } catch (error) {
@@ -199,14 +199,16 @@ app.put('/places',async(req,res)=>{
         extraInfo,
         checkIn,
         checkOut,
-        maxGuests,
+        maxGuests,price,
       })
       await placeDoc.save();
       res.json('ok');
     }
   })
 })
-
+app.get('/places',async(req,res)=>{
+  res.json(await Place.find());
+})
 // Start server
 app.listen(4000, () => {
   console.log('Server running on port 4000');
