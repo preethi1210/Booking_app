@@ -185,7 +185,7 @@ app.get('/places/:id',async(req,res)=>{
 app.put('/places',async(req,res)=>{
   const { token } = req.cookies;
   const {
-    id,title,address,addedPhotos,description,perks,extraInfo,checkOut,maxGuests,
+    id,title,address,addedPhotos,description,perks,extraInfo,checkOut,maxGuests,price,
   }=req.body;
   jwt.verify(token, jwtSecret,{}, async (err,userData) => {
     const placeDoc=await Place.findById(id);
