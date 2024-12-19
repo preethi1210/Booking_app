@@ -27,7 +27,7 @@ export default function LoginPage() {
     }
 
     if (redirect) {
-        return <Navigate to={'/accounts/places'} />;  // Redirect to home page after login
+        return <Navigate to={'/account/places'} />;  // Redirect to home page after login
     }
 
     return (

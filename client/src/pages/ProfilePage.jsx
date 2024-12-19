@@ -14,10 +14,15 @@ export default function ProfilePage() {
   }
 
   async function logout() {
-    await axios.post('/logout');
-    setRedirect('/');
-    setUser(null);
+    try {
+      await axios.post('/logout');
+      setRedirect('/');
+      setUser(null);
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
   }
+  
 
   if (!ready) {
     return 'Loading...';
