@@ -78,12 +78,16 @@ app.get('/profile', (req, res) => {
   const { token } = req.cookies;
   if (!token) return res.status(401).json({ error: 'Unauthorized' });
 
-  verifyToken(token, res, async (userData) => {
-    const user = await User.findById(userData.id);
-    if (!user) return res.status(404).json({ error: 'User not found' });
+  if (token) {
+    jwt.verify(token, jwtSecret, {}, async (err, userData) => {
+      if (err) throw err;
+      const {name,email,_id} = await User.findById(userData.id);
+      res.json({name,email,_id});
+    });
+  } else {
+    res.json(null);
+  }
 
-    res.json({ name: user.name, email: user.email, id: user._id });
-  });
 });
 
 // Logout
