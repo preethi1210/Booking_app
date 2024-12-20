@@ -4,7 +4,7 @@ import IndexPage from './pages/IndexPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import PlacesFormPage from './pages/PlaceForm';
-import PlacePage from './pages/PlacesPage';
+import PlacePage from './pages/PlacePage';
 import axios from 'axios';
 import PlacesPage from './pages/PlacesPage';
 import { UserContextProvider } from './UserContext';
