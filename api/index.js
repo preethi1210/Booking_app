@@ -12,7 +12,7 @@ require('dotenv').config();
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
-
+const Booking =require('./models/Booking')
 // Secret keys and configurations
 const jwtSecret = process.env.JWT_SECRET || "your_jwt_secret";
 const uploadDir = path.join(__dirname, '/uploads/');
@@ -33,6 +33,14 @@ mongoose.connect(process.env.MONGO_URL, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
+function getUserDataFromReq(req) {
+  return new Promise((resolve, reject) => {
+    jwt.verify(req.cookies.token, jwtSecret, {}, async (err, userData) => {
+      if (err) throw err;
+      resolve(userData);
+    });
+  });
+}
 
 // Helper function to verify JWT
 const verifyToken = (token, res, callback) => {
@@ -213,6 +221,42 @@ app.put('/places',async(req,res)=>{
 app.get('/places',async(req,res)=>{
   res.json(await Place.find());
 })
+app.post('/bookings', async (req, res) => {
+  try {
+      const userData = await getUserDataFromReq(req);
+      const { place, checkIn, checkOut, numOfguests, name, phone, price } = req.body;
+
+      const booking = await Booking.create({
+          place,
+          checkIn,
+          checkOut,
+          numOfguests,
+          name,
+          phone,
+          price,
+          user: userData.id,
+      });
+
+      res.status(201).json(booking);
+  } catch (error) {
+      console.error('Error creating booking:', error);
+      res.status(500).json({ error: 'Failed to create booking' });
+  }
+});
+
+app.get('/bookings', async (req, res) => {
+  try {
+      const userData = await getUserDataFromReq(req);
+
+      const bookings = await Booking.find({ user: userData.id }).populate('place');
+      res.json(bookings);
+  } catch (error) {
+      console.error('Error fetching bookings:', error);
+      res.status(500).json({ error: 'Failed to fetch bookings' });
+  }
+});
+
+
 // Start server
 app.listen(4000, () => {
   console.log('Server running on port 4000');

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import axios from "axios";
 import PlaceGallery from "../PlaceGallery";
+import BookingWidget from "../BookingWidget";
 
 export default function PlacePage() {
   const { id } = useParams();
@@ -49,15 +50,12 @@ export default function PlacePage() {
           <br />
           Max number of guests: {place.maxGuests}
         </div>
-      </div>
-      <div className="bg-white -mx-8 px-8 py-8 border-t">
-        <div>
-          <h2 className="font-semibold text-2xl">Extra info</h2>
-        </div>
-        <div className="mb-4 mt-2 text-sm text-gray-700 leading-5">
-          {place.extraInfo}
-        </div>
-      </div>
-    </div>
+<div>
+  <BookingWidget place={place} />
+</div></div>
+<div className="bg-white -mx-8 px-8 py-8" >
+<h2 className="font-semibold text-2xl">Extra information</h2>
+<div className="mb-4 mt-1 text-sm text-gray-700 leading-4">{place.extraInfo}</div>
+    </div></div>
   );
 }
