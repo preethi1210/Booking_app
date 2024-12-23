@@ -16,7 +16,7 @@ const Booking =require('./models/Booking')
 // Secret keys and configurations
 const jwtSecret = process.env.JWT_SECRET || "your_jwt_secret";
 const uploadDir = path.join(__dirname, '/uploads/');
-
+const Profile=require('./models/Profile')
 // Middleware setup
 app.use(express.json());
 app.use(cookieParser());
@@ -193,7 +193,16 @@ app.get('/user-places',(req,res)=>{
 app.get('/places/:id',async(req,res)=>{
   const { id } = req.params;
   res.json(await Place.findById(id));})
-
+app.get('/edit/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+      const profile = await Profile.findById(id);
+      res.json(profile);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching profile' });
+    }
+  });
+  
 app.put('/places',async(req,res)=>{
   const { token } = req.cookies;
   const {
@@ -253,6 +262,30 @@ app.get('/bookings', async (req, res) => {
   } catch (error) {
       console.error('Error fetching bookings:', error);
       res.status(500).json({ error: 'Failed to fetch bookings' });
+  }
+});
+// Update profile
+app.put('/edit/:id', async (req, res) => {
+  const { id } = req.params;
+  const { name, email, phone, photo } = req.body;
+
+  try {
+    const profile = await Profile.findById(id);
+    if (!profile) {
+      return res.status(404).json({ message: 'Profile not found' });
+    }
+
+    // Update the profile
+    profile.name = name;
+    profile.email = email;
+    profile.phone = phone;
+    profile.photo = photo || profile.photo; // Keep the old photo if new photo isn't provided
+
+    await profile.save();
+    res.json({ message: 'Profile updated successfully', profile });
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    res.status(500).json({ message: 'Error updating profile' });
   }
 });
 

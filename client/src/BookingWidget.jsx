@@ -61,8 +61,16 @@ export default function BookingWidget({place}) {
           <label>Number of guests:</label>
           <input type="number"
                  value={numberOfGuests}
-                 onChange={ev => setNumberOfGuests(ev.target.value)}/>
-        </div>
+                 onChange={ev => {
+                  const guests = parseInt(ev.target.value, 10);
+                  if (guests > place.maxGuests) {
+                    alert(`Maximum guests allowed: ${place.maxGuests}`);
+                    setNumberOfGuests(place.maxGuests);
+                  } else {
+                    setNumberOfGuests(guests);
+                  }
+                }}/>
+       </div>
         {numberOfNights > 0 && (
           <div className="py-3 px-4 border-t">
             <label>Your full name:</label>
